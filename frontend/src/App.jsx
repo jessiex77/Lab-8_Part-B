@@ -9,6 +9,7 @@ export default function App() {
   const [form, setForm] = useState({
     first_name: '', last_name: '', email: '', birthdate: '', salary: ''
   });
+  const [editId, setEditId] = useState(null);
 
   const load = async () => {
     const res = await api.get('/employees');
@@ -27,13 +28,40 @@ export default function App() {
     setForm({ first_name: '', last_name: '', email: '', birthdate: '', salary: '' });
     await load();
   };
+  const handleEdit = (emp) => {
+    setEditId(emp.employee_id);
+    setForm({
+      first_name: emp.first_name || '',
+      last_name: emp.last_name || '',
+      email: emp.email || '',
+      birthdate: emp.birthdate ? emp.birthdate.slice(0, 10) : '',
+      salary: emp.salary != null ? emp.salary : ''
+    });
+  };
+
+    const handleUpdate = async (e) => {
+    e.preventDefault();
+    await api.put(`/employees/${editId}`, {
+      ...form,
+      salary: form.salary === '' ? null : Number(form.salary)
+    });
+    setEditId(null);
+    setForm({ first_name: '', last_name: '', email: '', birthdate: '', salary: '' });
+    await load();
+  };
+
+    const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this employee?')) return;
+    await api.delete(`/employees/${id}`);
+    await load();
+  };
 
   return (
     <div style={{ margin: 20 }}>
       <h1>Employees</h1>
 
       <table border="1" cellPadding="8">
-        <thead><tr><th>ID</th><th>First</th><th>Last</th><th>Email</th><th>Birthdate</th><th>Salary</th></tr></thead>
+        <tr><th>ID</th><th>First</th><th>Last</th><th>Email</th><th>Birthdate</th><th>Salary</th><th>Actions</th></tr>
         <tbody>
           {employees.map(emp => (
             <tr key={emp.employee_id}>
@@ -43,6 +71,8 @@ export default function App() {
               <td>{emp.email || '-'}</td>
               <td>{emp.birthdate ? new Date(emp.birthdate).toLocaleDateString() : '-'}</td>
               <td>{emp.salary != null ? Number(emp.salary).toFixed(2) : '-'}</td>
+              <td><button onClick={() => handleEdit(emp)}>Edit</button>
+              <button onClick={() => handleDelete(emp.employee_id)}>Delete</button></td>
             </tr>
           ))}
         </tbody>
@@ -50,13 +80,14 @@ export default function App() {
 
       <hr></hr>
 
-      <form onSubmit={onSubmit} style={{ marginBottom: 20 }}>
+      <form onSubmit={editId ? handleUpdate : onSubmit} style={{ marginBottom: 20 }}>
         <input name="first_name" value={form.first_name} onChange={onChange} placeholder="First name" />
         <input name="last_name" value={form.last_name} onChange={onChange} placeholder="Last name" />
         <input name="email" value={form.email} onChange={onChange} placeholder="Email" />
         <input name="birthdate" type="date" value={form.birthdate} onChange={onChange} />
         <input name="salary" type="number" step="0.01" value={form.salary} onChange={onChange} placeholder="Salary" />
-        <button type="submit">Add</button>
+        <button type="submit">{editId ? 'Update' : 'Add'}</button>
+        {editId && <button type="button" onClick={() => { setEditId(null); setForm({ first_name: '', last_name: '', email: '', birthdate: '', salary: '' }); }}>Cancel</button>}
       </form>
     </div>
   );
